@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload YAML File</title>
+    <style>
+        /* Including the CSS styles directly in the HTML file */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-image: url('{{ url_for('static', filename='background.png') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+        }
+
+        .banner-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto 20px auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Upload YAML file for conversion to CSV</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <p><input type="submit" value="Upload"></p>
+        </form>
+
+        <!-- New section for batch processing -->
+        <h2>Or batch process all YAML files in a server directory</h2>
+        <button id="batchProcess" onclick="batchProcess()">Batch Process YAML Files</button>
+        <p id="batchProcessResult"></p>
+        
+    </div> <!-- Closing the container div -->
+
+    <script>
+        function batchProcess() {
+            // This could be updated with a prompt or a predetermined path
+            const directoryPath = prompt('Enter the server directory path for YAML files:');
+            
+            // Make sure the user entered a path
+            if (!directoryPath) {
+                document.getElementById('batchProcessResult').textContent = 'No directory path provided.';
+                return;
+            }
+
+            // Trigger the batch processing on the server
+            fetch('/batch_process?directory=' + encodeURIComponent(directoryPath))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    document.getElementById('batchProcessResult').textContent = text;
+                })
+                .catch(error => {
+                    document.getElementById('batchProcessResult').textContent = 'Batch processing failed: ' + error.message;
+                });
+        }
+    </script>
+</body>
+
+</html>
