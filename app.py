@@ -1,68 +1,52 @@
-from flask import Flask, request, send_from_directory, render_template
-from werkzeug.utils import secure_filename
 import os
-import glob
-import importer
+import sys
+from importer import yaml_to_csv
 
-app = Flask(__name__)
+def bulk_yaml_to_csv(yaml_folder, output_folder):
+    # Check if output_folder exists, if not, create it
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
-# Configure upload and output settings
-app.config['UPLOAD_FOLDER'] = '/tmp'
-app.config['OUTPUT_FOLDER'] = 'output'
-app.config['ALLOWED_EXTENSIONS'] = {'yaml', 'yml'}
+    # List to keep track of failed files
+    failed_files = []
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    # Iterate through each file in the directory
+    for filename in os.listdir(yaml_folder):
+        # Check if the file is a YAML file
+        if filename.endswith('.yaml') or filename.endswith('.yml') or filename.endswith('.eyaml'):
+            # Construct full file paths
+            yaml_file_path = os.path.join(yaml_folder, filename)
+            # Create a proper CSV filename
+            csv_file_name = filename.rsplit('.', 1)[0] + '.csv'  # Replace YAML extension with CSV
+            csv_file_path = os.path.join(output_folder, csv_file_name)
 
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            return 'No file part in the request', 400
-        file = request.files['file']
-        # if the user does not select a file, the browser also submits an empty part without a filename
-        if file.filename == '':
-            return 'No selected file', 400
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            # process the file
-            output_filename = filename.rsplit('.', 1)[0] + '.csv'
-            output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
-            importer.yaml_to_csv(filepath, output_filepath)
-            os.remove(filepath)
-            return '''
-            <a href="/uploads/{filename}">Download {filename}</a>
-            '''.format(filename=output_filename), 201
-    return render_template('index.html')
+            try:
+                # Attempt to convert the YAML file to CSV
+                print(f"Converting {yaml_file_path} to {csv_file_path}")
+                yaml_to_csv(yaml_file_path, csv_file_path)
+            except Exception as e:
+                # If an error occurs during conversion, skip the file and print an error message
+                print(f"Failed to convert {yaml_file_path}: {e}")
+                failed_files.append(yaml_file_path)  # Add the failed file path to the list
+        else:
+            # If the file is not a YAML file, skip it
+            print(f"Skipping {filename}, not a YAML file.")
 
-@app.route('/batch_process', methods=['GET'])
-def batch_process_yaml():
-    yaml_directory = request.args.get('directory', '')  # Get the directory from the query parameter
-    if not yaml_directory:
-        return 'No directory specified', 400
-    
-    # Ensure the output directory exists
-    output_dir = os.path.join(app.root_path, app.config['OUTPUT_FOLDER'])
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Process each YAML file in the directory
-    for yaml_file in glob.glob(os.path.join(yaml_directory, '*.yml')):
-        if allowed_file(yaml_file):
-            filename = secure_filename(os.path.basename(yaml_file))
-            output_filename = filename.rsplit('.', 1)[0] + '.csv'
-            output_filepath = os.path.join(output_dir, output_filename)
-            importer.yaml_to_csv(yaml_file, output_filepath)
-
-    return 'Batch processing completed', 200
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    # Print the list of failed files at the end
+    if failed_files:
+        print("\nThe following files failed to convert:")
+        for failed_file in failed_files:
+            print(failed_file)
+    else:
+        print("\nAll files converted successfully.")
 
 if __name__ == '__main__':
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(host='0.0.0.0', port=5001)
+    if len(sys.argv) != 3:
+        print("Usage: python bulk_yaml_to_csv.py <yaml_folder_path> <output_csv_folder_path>")
+        sys.exit(1)
+
+    yaml_folder_path = sys.argv[1]
+    output_csv_folder_path = sys.argv[2]
+
+    bulk_yaml_to_csv(yaml_folder_path, output_csv_folder_path)
 

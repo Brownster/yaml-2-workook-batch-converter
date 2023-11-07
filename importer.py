@@ -63,6 +63,10 @@ def process_exporter_data_app(exporter_data, csv_data, exporter_name_os='', expo
 
 
 def yaml_to_csv(yaml_file_path, csv_file_path):
+    if not yaml_file_path.endswith(('.yaml', '.yml', '.eyaml')):  # This will check for any of the three extensions
+        print(f"The file {yaml_file_path} is not a YAML file.")
+        return
+
     with open(yaml_file_path, 'r') as file:
         data = yaml.safe_load(file)
 
@@ -80,7 +84,7 @@ def yaml_to_csv(yaml_file_path, csv_file_path):
     'exporter_baas', 'exporter_redis', 'exporter_mpp', 'exporter_network',
     'exporter_weblm', 'exporter_audiocodesbc', 'exporter_voice_portal'
 ]
-    ssl_exporters = ['exporter_ssl']
+    ssl_exporters = ['exporter_blank']
     bb_exporters = ['exporter_blackbox']
 
     # Create a new dictionary with hostname as the main key
