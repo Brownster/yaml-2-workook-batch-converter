@@ -2,6 +2,27 @@ import os
 import sys
 from importer import yaml_to_csv
 
+
+def process_commented_targets(yaml_file_path):
+    modified_file_path = yaml_file_path.rsplit('.', 1)[0] + '_hashed_targets.yaml'
+
+    with open(yaml_file_path, 'r') as file:
+        lines = file.readlines()
+
+    with open(modified_file_path, 'w') as new_file:
+        inside_exporter = False
+        for line in lines:
+            if line.strip().startswith('exporter_'):
+                inside_exporter = True
+                new_file.write(line)
+            elif inside_exporter:
+                if line.startswith('#'):  # Include only commented lines
+                    new_file.write(line[1:])  # Remove the hash to uncomment
+            else:
+                new_file.write(line)
+
+    return modified_file_path
+
 def bulk_yaml_to_csv(yaml_folder, output_folder):
     # Check if output_folder exists, if not, create it
     if not os.path.exists(output_folder):
